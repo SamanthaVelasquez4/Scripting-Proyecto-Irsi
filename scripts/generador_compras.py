@@ -53,3 +53,6 @@ if __name__ == "__main__":
 
     # Ejecutar el script Bash que procesa el CSV y genera la factura PDF
     subprocess.run(["bash", "./scripts/generador_facturas.sh"])
+
+    #Samantha estuvo aqui
+    
