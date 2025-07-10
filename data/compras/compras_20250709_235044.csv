@@ -1,0 +1,2 @@
+id_transaccion,fecha_emision,nombre,ciudad,direccion,correo,telefono,ip,cantidad,monto_total,modalidad_pago,estado_pago,timestamp,observaciones
+716463,09-07-2025,Linda Garrett,New Michaelstad,25914 Gloria Meadows Port Marieberg - IL 38384,linda60@example.com,(420)747-4028x5091,124.218.250.44,8,10976,fraccionado,fallido,09 Jul 2025 - 11:50 PM,Cliente frecuente
