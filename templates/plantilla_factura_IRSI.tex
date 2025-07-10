@@ -1,0 +1,83 @@
+
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{color}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{tabularx}
+\usepackage{colortbl}
+\usepackage{xcolor}
+
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textbf{Factura \#{id_transaccion}}}
+\lhead{Mercado IRSI}
+\rfoot{Página \thepage\ de \pageref{LastPage}}
+
+\titleformat{\section}{\large\bfseries}{}{0em}{}
+
+\definecolor{lightgray}{gray}{0.9}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\begin{document}
+
+\begin{center}
+    \Huge \textbf{Factura Electrónica}
+
+    \vspace{0.3cm}
+    \large \textbf{Mercado IRSI - Sistema Automatizado}
+
+    \vspace{0.5cm}
+    \normalsize Fecha de Emisión: \textbf{{fecha_emision}} \\
+    ID de Transacción: \textbf{{id_transaccion}} \\
+\end{center}
+
+\vspace{1cm}
+
+\section*{Información del Cliente}
+\begin{tabularx}{\textwidth}{L{4cm} L{12cm}}
+\rowcolor{lightgray}
+\textbf{Campo} & \textbf{Valor} \\
+\hline
+Nombre completo & {nombre} \\
+Correo electrónico & {correo} \\
+Teléfono & {telefono} \\
+Dirección & {direccion} \\
+Ciudad & {ciudad} \\
+\end{tabularx}
+
+\vspace{0.8cm}
+
+\section*{Detalles de la Compra}
+\begin{tabularx}{\textwidth}{L{6cm} L{10cm}}
+\rowcolor{lightgray}
+\textbf{Concepto} & \textbf{Detalle} \\
+\hline
+Cantidad comprada & {cantidad} \\
+Monto total & \${monto} \\
+Tipo de pago & {pago} \\
+Estado del pago & {estado_pago} \\
+IP de compra & {ip} \\
+Fecha y hora & {timestamp} \\
+\end{tabularx}
+
+\vspace{1.5cm}
+
+\section*{Observaciones}
+{observaciones}
+
+\vfill
+
+\begin{center}
+    \textit{Gracias por su compra.} \\
+    Mercado IRSI - www.mercadoirsi.com \\
+    Factura generada automáticamente por el sistema.
+\end{center}
+
+\end{document}
