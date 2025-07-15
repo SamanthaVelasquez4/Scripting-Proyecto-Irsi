@@ -30,11 +30,13 @@ escape_latex() {
     echo "$str"
 }
 
-# PROCESAR CADA ARCHIVO DE COMPRAS
-find "$COMPRAS" -type f -name "compras_*.csv" | while read -r CSV; do
-    echo "Procesando: $CSV"
+# ENCONTRAR Y PROCESAR SOLO EL ÚLTIMO ARCHIVO DE COMPRAS
+latest_csv=$(find "$COMPRAS" -type f -name "compras_*.csv" | sort -r | head -n 1)
 
-    tail -n +2 "$CSV" | while IFS=',' read -r id fecha nombre ciudad direccion correo telefono ip cantidad monto pago estado timestamp obs; do
+if [ -n "$latest_csv" ]; then
+    echo "Procesando archivo más reciente: $latest_csv"
+
+    tail -n +2 "$latest_csv" | while IFS=',' read -r id fecha nombre ciudad direccion correo telefono ip cantidad monto pago estado timestamp obs; do
         PDF="$FACTURAS/factura_${id}.pdf"
         LOG_FACTURA="$LOG_DIR/factura_${id}.log"
         TEX_TEMP="$SCRIPT_DIR/factura_${id}.tex"
@@ -96,4 +98,6 @@ find "$COMPRAS" -type f -name "compras_*.csv" | while read -r CSV; do
         rm -f "$TEX_TEMP" "$FACTURAS/factura_${id}".{aux,log,out}
 
     done
-done
+else
+    echo "No se encontraron archivos de compras para procesar." | tee -a "$LOG_DIARIO"
+fi
