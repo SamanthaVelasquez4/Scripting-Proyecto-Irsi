@@ -48,8 +48,8 @@ if __name__ == "__main__":
 
     guardar_compras_csv(compras, archivo_compra) # Ejecutar funcion para guardar compras en CSV
 
-    print(f"✅ Archivo CSV generado: {archivo_compra}")
+    print(f"**** Archivo CSV generado ****: {archivo_compra}")
     print("Generando factura automáticamente...")
 
-    # Ejecutar el script Bash que procesa el CSV y genera la factura PDF
-    subprocess.run(["bash", "./scripts/generador_facturas.sh"])
+    # # Ejecutar el script Bash que procesa el CSV y genera la factura PDF
+    # subprocess.run(["bash", "./scripts/generador_facturas.sh"])

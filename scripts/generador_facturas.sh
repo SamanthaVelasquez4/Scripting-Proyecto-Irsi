@@ -1,123 +1,99 @@
-#!/bin/bash  
-# Shell: Bash  # Indica que se usará Bash para ejecutar el script
+#!/bin/bash
 
+# ──────────────────────────────────────────────────────
+# Generador de facturas PDF desde archivos CSV de compras
+# ──────────────────────────────────────────────────────
 
-# Rutas de archivos individuales
-TEMPLATE="./templates/plantilla_factura_IRSI.tex"         # Plantilla LaTeX con campos a reemplazar
-LOG_DIARIO="./data/logs/log_diario.log"                   # Archivo de log general por ejecución
-PENDIENTES="./data/facturas_pdf/pendientes_envio.csv"     # CSV con facturas pendientes por enviar
+# OBTENER RUTA ABSOLUTA DEL SCRIPT
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Rutas de carpetas utilizadas por el script
-COMPRAS="./data/compras"                                  # Carpeta con archivos CSV de compras
-FACTURAS="./data/facturas_pdf"                            # Carpeta donde se guardarán los PDFs
-LOG_DIR="./data/logs"                                     # Carpeta que contiene todos los logs
+# CONFIGURACIÓN DE RUTAS BASADAS EN LA CARPETA DEL SCRIPT
+TEMPLATE="$SCRIPT_DIR/../templates/plantilla_factura_IRSI.tex"
+COMPRAS="$SCRIPT_DIR/../data/compras"
+FACTURAS="$SCRIPT_DIR/../data/facturas_pdf"
+LOG_DIR="$SCRIPT_DIR/../data/logs"
+LOG_DIARIO="$LOG_DIR/log_diario.log"
+PENDIENTES="$FACTURAS/pendientes_envio.csv"
 
+# Crear carpetas necesarias
+mkdir -p "$FACTURAS" "$LOG_DIR"
 
-# Crear carpetas si no existen
-mkdir -p "$FACTURAS"
-mkdir -p "$LOG_DIR"
-
-# Limpiar archivos de log anteriores
-# echo "" > "$LOG_DIARIO"
-# echo "" > "$PENDIENTES"
-
-# Función que escapa caracteres especiales para que no den error en LaTeX
+# FUNCIÓN PARA ESCAPAR CARACTERES ESPECIALES EN LATEX
 escape_latex() {
     local str="$1"
-    str="${str//\\/\\textbackslash}"   # escapamos \ 
+    str="${str//\\/\\textbackslash}"
     str="${str//#/\\#}"
     str="${str//%/\\%}"
     str="${str//&/\\&}"
     str="${str//\$/\\\$}"
     str="${str//_/\\_}"
-    str="${str//@/\\@}"
-    # str="${str//^/\\^{}}"
-    # str="${str//~/\\~{}}"
     echo "$str"
 }
 
-# Detectar el archivo CSV más reciente en la carpeta de compras
-CSV=$(find "$COMPRAS" -type f -name "compras_*.csv" -printf "%T@ %p\n" 2>/dev/null | sort -nr | head -n 1 | cut -d' ' -f2-)
+# PROCESAR CADA ARCHIVO DE COMPRAS
+find "$COMPRAS" -type f -name "compras_*.csv" | while read -r CSV; do
+    echo "Procesando: $CSV"
 
-echo "Archivo CSV detectado: $CSV"
+    tail -n +2 "$CSV" | while IFS=',' read -r id fecha nombre ciudad direccion correo telefono ip cantidad monto pago estado timestamp obs; do
+        PDF="$FACTURAS/factura_${id}.pdf"
+        LOG_FACTURA="$LOG_DIR/factura_${id}.log"
+        TEX_TEMP="$SCRIPT_DIR/factura_${id}.tex"
 
-# Validar si se encontró un archivo CSV válido
-if [ -z "$CSV" ] || [ ! -f "$CSV" ]; then
-  echo "❌ No se encontró ningún archivo CSV válido en $COMPRAS"
-  exit 1
-fi
+        # Omitir si ya existe
+        [ -f "$PDF" ] && echo "Factura existente para ID $id. Omitida." && continue
 
-procesar_factura(){
+        # Escapar todos los campos
+        id=$(escape_latex "$id")
+        fecha=$(escape_latex "$fecha")
+        nombre=$(escape_latex "$nombre")
+        ciudad=$(escape_latex "$ciudad")
+        direccion=$(escape_latex "$direccion")
+        correo=$(escape_latex "$correo")
+        telefono=$(escape_latex "$telefono")
+        ip=$(escape_latex "$ip")
+        cantidad=$(escape_latex "$cantidad")
+        monto=$(escape_latex "$monto")
+        pago=$(escape_latex "$pago")
+        estado=$(escape_latex "$estado")
+        timestamp=$(escape_latex "$timestamp")
+        obs=$(escape_latex "$obs")
 
-    # Leer línea por línea el CSV (omitir encabezado con tail)
-    tail -n +2 "$CSV" | while IFS=',' read -r id_transaccion fecha_emision nombre ciudad direccion correo telefono ip cantidad monto_total modalidad_pago estado_pago timestamp observaciones
-    do
-        # Escapar caracteres especiales en cada campo del CSV
-        id_transaccion_esc=$(escape_latex "$id_transaccion")
-        fecha_emision_esc=$(escape_latex "$fecha_emision")
-        nombre_esc=$(escape_latex "$nombre")
-        ciudad_esc=$(escape_latex "$ciudad")
-        direccion_esc=$(escape_latex "$direccion")
-        correo_esc=$(escape_latex "$correo")
-        telefono_esc=$(escape_latex "$telefono")
-        ip_esc=$(escape_latex "$ip")
-        cantidad_esc=$(escape_latex "$cantidad")
-        monto_total_esc=$(escape_latex "$monto_total")
-        modalidad_pago_esc=$(escape_latex "$modalidad_pago")
-        estado_pago_esc=$(escape_latex "$estado_pago")
-        timestamp_esc=$(escape_latex "$timestamp")
-        observaciones_esc=$(escape_latex "$observaciones")
+        echo "" | tee -a "$LOG_DIARIO"
+        echo "Generando factura ID $id para $nombre" | tee -a "$LOG_DIARIO"
 
-
-        echo "Procesando factura ID $id_transaccion para $nombre" | tee -a "$LOG_DIARIO"
-
-        # Nombre temporal del archivo .tex generado
-        TEX_TEMP="factura_${id_transaccion}.tex"
-
-        # Reemplazar los marcadores del template con los valores escapados
-        sed -e "s/{id_transaccion}/$id_transaccion_esc/g" \
-            -e "s/{fecha_emision}/$fecha_emision_esc/g" \
-            -e "s/{nombre}/$nombre_esc/g" \
-            -e "s/{correo}/$correo_esc/g" \
-            -e "s/{telefono}/$telefono_esc/g" \
-            -e "s/{direccion}/$direccion_esc/g" \
-            -e "s/{ciudad}/$ciudad_esc/g" \
-            -e "s/{cantidad}/$cantidad_esc/g" \
-            -e "s/{monto}/$monto_total_esc/g" \
-            -e "s/{pago}/$modalidad_pago_esc/g" \
-            -e "s/{estado_pago}/$estado_pago_esc/g" \
-            -e "s/{ip}/$ip_esc/g" \
-            -e "s/{timestamp}/$timestamp_esc/g" \
-            -e "s/{observaciones}/$observaciones_esc/g" \
+        # Crear archivo .tex personalizado
+        sed -e "s/{id_transaccion}/$id/g" \
+            -e "s/{fecha_emision}/$fecha/g" \
+            -e "s/{nombre}/$nombre/g" \
+            -e "s/{correo}/$correo/g" \
+            -e "s/{telefono}/$telefono/g" \
+            -e "s/{direccion}/$direccion/g" \
+            -e "s/{ciudad}/$ciudad/g" \
+            -e "s/{cantidad}/$cantidad/g" \
+            -e "s/{monto}/$monto/g" \
+            -e "s/{pago}/$pago/g" \
+            -e "s/{estado_pago}/$estado/g" \
+            -e "s/{ip}/$ip/g" \
+            -e "s/{timestamp}/$timestamp/g" \
+            -e "s/{observaciones}/$obs/g" \
             "$TEMPLATE" > "$TEX_TEMP"
 
-        # Compilar el archivo .tex a PDF usando pdflatex
-        pdflatex -interaction=nonstopmode -output-directory="$FACTURAS" "$TEX_TEMP" > "$LOG_DIR/factura_${id_transaccion}.log" 2>&1
+        # Compilar el .tex a PDF
+        pdflatex -interaction=nonstopmode -output-directory="$FACTURAS" "$TEX_TEMP" > "$LOG_FACTURA" 2>&1
 
-        # Verificar si hubo errores en el log de compilación
-        if grep -q "^!" "$LOG_DIR/factura_${id_transaccion}.log"; then
-            echo " ***❌ Error*** al compilar factura ID $id_transaccion" | tee -a "$LOG_DIARIO"
-            echo "---- Contenido del log ----"
-            tail -n 20 "$LOG_DIR/factura_${id_transaccion}.log"
+        # Validar si se generó correctamente
+        if grep -q "^!" "$LOG_FACTURA"; then
+            echo "ERROR: Falló la compilación para ID $id" | tee -a "$LOG_DIARIO"
+            tail -n 5 "$LOG_FACTURA"
+        elif [ -f "$PDF" ]; then
+            echo "Factura generada: $PDF" | tee -a "$LOG_DIARIO"
+            echo "factura_${id}.pdf,$correo" >> "$PENDIENTES"
         else
-            # Verificar si el PDF fue generado correctamente
-            if [ -f "$FACTURAS/factura_${id_transaccion}.pdf" ]; then
-                echo "✅ [APROBADO] Factura ID $id_transaccion generada correctamente" | tee -a "$LOG_DIARIO"
-                echo "factura_${id_transaccion}.pdf,$correo" >> "$PENDIENTES"
-            else
-                echo "***! Error*** PDF temporal no encontrado para factura ID $id_transaccion" | tee -a "$LOG_DIARIO"
-            fi
+            echo "ADVERTENCIA: PDF no encontrado para ID $id" | tee -a "$LOG_DIARIO"
         fi
 
-        # Limpiar archivos temporales generados por LaTeX
-        rm -f "$FACTURAS/factura_${id_transaccion}.aux" \
-            "$FACTURAS/factura_${id_transaccion}.out" \
-            "$FACTURAS/factura_${id_transaccion}.log"
+        # Limpiar temporales
+        rm -f "$TEX_TEMP" "$FACTURAS/factura_${id}".{aux,log,out}
 
     done
-
-
-}
-
-# Ejecutar función
-procesar_factura
+done
