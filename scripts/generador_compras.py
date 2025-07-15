@@ -2,6 +2,7 @@ from faker import Faker
 import random
 from datetime import datetime
 import csv
+import os
 import subprocess
 
 faker = Faker()  # Crear instancia de Faker para generar datos falsos
