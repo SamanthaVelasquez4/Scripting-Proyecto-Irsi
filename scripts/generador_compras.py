@@ -43,8 +43,16 @@ if __name__ == "__main__":
     cantidad_compras = 1  # Definir cuántas compras generar
     compras = [generar_compra() for _ in range(cantidad_compras)]  # Generar lista de compras
 
+    # Definir ruta de la carpeta
+    carpeta_compras = "./data/compras"
+    
+    # Verificar si la carpeta existe, si no, crearla
+    if not os.path.exists(carpeta_compras):
+        os.makedirs(carpeta_compras)
+        print(f"Se creó la carpeta: {carpeta_compras}")
+
     # Nombre de archivo CSV con timestamp para evitar sobrescrituras
-    archivo_compra = f"./data/compras/compras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    archivo_compra = f"{carpeta_compras}/compras_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
 
     guardar_compras_csv(compras, archivo_compra) # Ejecutar funcion para guardar compras en CSV
 
