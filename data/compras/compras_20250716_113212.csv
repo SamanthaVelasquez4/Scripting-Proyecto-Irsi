@@ -1,4 +1,0 @@
-id_transaccion,fecha_emision,nombre,ciudad,direccion,correo,telefono,ip,cantidad,monto_total,modalidad_pago,estado_pago,timestamp,observaciones
-220772,16-07-2025,Betty Garcia,Anthonyberg,331 Nancy Summit Apt. 274 Silvaberg - OR 06484,bryantaylor@example.com,3469989188,42.120.113.15,9,27891,fraccionado,fallido,16 Jul 2025 - 11:32 AM,Promoción aplicada
-169015,16-07-2025,Cheryl Kelly,Connerfort,965 Washington Crossroad Suite 761 Jamesland - VT 70760,beckyhobbs@example.org,812.753.7968x0837,141.132.35.60,9,125775,fraccionado,fallido,16 Jul 2025 - 11:32 AM,Cliente frecuente
-851156,16-07-2025,Todd Warner,Port Melissa,PSC 1265 - Box 9794 APO AA 81808,kathleen08@example.com,(831)351-8036x9004,72.174.8.142,9,78678,completo,exitoso,16 Jul 2025 - 11:32 AM,Promoción aplicada
