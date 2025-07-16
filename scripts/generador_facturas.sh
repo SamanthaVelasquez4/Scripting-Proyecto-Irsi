@@ -12,11 +12,10 @@ TEMPLATE="$SCRIPT_DIR/../templates/plantilla_factura_IRSI.tex"
 COMPRAS="$SCRIPT_DIR/../data/compras"
 FACTURAS="$SCRIPT_DIR/../data/facturas_pdf"
 LOG_DIR="$SCRIPT_DIR/../data/logs"
-LOG_DIARIO="$LOG_DIR/log_diario.log"
+LOG_FACTURAS_DIR="$LOG_DIR/logs_facturas"
+LOG_DIARIOS_DIR="$LOG_DIR/logs_diarios"
+LOG_DIARIO="$LOG_DIARIOS_DIR/log_diario_$(date +'%Y%m%d').log"
 PENDIENTES="$FACTURAS/pendientes_envio.csv"
-
-# Crear carpetas necesarias
-mkdir -p "$FACTURAS" "$LOG_DIR"
 
 # FUNCIÓN PARA ESCAPAR CARACTERES ESPECIALES EN LATEX
 escape_latex() {
@@ -30,15 +29,39 @@ escape_latex() {
     echo "$str"
 }
 
+# ──────────────────────────────────────────────────────
+# VALIDACIONES INICIALES
+# ──────────────────────────────────────────────────────
+
+# 1. Validar que exista el template
+if [ ! -f "$TEMPLATE" ]; then
+    echo "ERROR: No se encontró el template en $TEMPLATE" >&2
+    exit 1
+fi
+
+# 2. Validar que exista la carpeta de compras
+if [ ! -d "$COMPRAS" ]; then
+    echo "ERROR: No se encontró la carpeta de compras en $COMPRAS" >&2
+    exit 1
+fi
+
+# 3. Crear carpetas necesarias si no existen
+mkdir -p "$FACTURAS" "$LOG_FACTURAS_DIR" "$LOG_DIARIOS_DIR"
+
+# ──────────────────────────────────────────────────────
+# PROCESAMIENTO DE FACTURAS
+# ──────────────────────────────────────────────────────
+
 # ENCONTRAR Y PROCESAR SOLO EL ÚLTIMO ARCHIVO DE COMPRAS
 latest_csv=$(find "$COMPRAS" -type f -name "compras_*.csv" | sort -r | head -n 1)
 
 if [ -n "$latest_csv" ]; then
-     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Procesando archivo más reciente: $latest_csv" | tee -a "$LOG_DIARIO"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] Procesando archivo más reciente: $latest_csv" | tee -a "$LOG_DIARIO"
+    echo "" | tee -a "$LOG_DIARIO"
 
     tail -n +2 "$latest_csv" | while IFS=',' read -r id fecha nombre ciudad direccion correo telefono ip cantidad monto pago estado timestamp obs; do
         PDF="$FACTURAS/factura_${id}.pdf"
-        LOG_FACTURA="$LOG_DIR/factura_${id}.log"
+        LOG_FACTURA="$LOG_FACTURAS_DIR/factura_${id}.log"
         TEX_TEMP="$SCRIPT_DIR/factura_${id}.tex"
 
         # Omitir si ya existe

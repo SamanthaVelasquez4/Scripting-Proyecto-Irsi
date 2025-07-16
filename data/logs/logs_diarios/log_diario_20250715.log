@@ -1,0 +1,10 @@
+[2025-07-15 18:05:40] Procesando archivo más reciente: /s/Samantha/Escritorio/IRSI/Scripting/Scripting-Proyecto-Irsi/scripts/../data/compras/compras_20250715_173914.csv
+[2025-07-15 18:05:40] Generando factura ID 118919 para Dustin Howell
+[2025-07-15 18:05:43] ERROR: Falló la compilación para ID 118919
+Output written on S:/Samantha\Escritorio\IRSI\Scripting\Scripting-Proyecto-Irsi
+\data\facturas_pdf\factura_118919.pdf (1 page, 48567 bytes).
+Transcript written on S:/Samantha\Escritorio\IRSI\Scripting\Scripting-Proyecto-
+Irsi\data\facturas_pdf\factura_118919.log.
+pdflatex: major issue: So far, no MiKTeX administrator has checked for updates.
+
+[2025-07-15 18:05:43] Proceso completado
