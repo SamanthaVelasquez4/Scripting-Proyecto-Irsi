@@ -102,6 +102,9 @@ def enviar_factura(pdf, correo_destino):
 # --- Procesar todos los correos pendientes ---
 def procesar_envios():
     pendientes = leer_pendientes(ARCHIVO_PENDIENTES)  # Leemos la lista de pendientes
+    # Crear carpeta log_envios si no existe
+    os.makedirs(os.path.dirname(ARCHIVO_LOG), exist_ok=True)
+    
     with open(ARCHIVO_LOG, 'a', newline='', encoding="utf-8") as f_log:
         log = csv.writer(f_log)
         for fila in pendientes:
