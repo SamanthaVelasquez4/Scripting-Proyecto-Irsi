@@ -34,7 +34,7 @@ escape_latex() {
 latest_csv=$(find "$COMPRAS" -type f -name "compras_*.csv" | sort -r | head -n 1)
 
 if [ -n "$latest_csv" ]; then
-    echo "Procesando archivo más reciente: $latest_csv"
+     echo "[$(date +'%Y-%m-%d %H:%M:%S')] Procesando archivo más reciente: $latest_csv" | tee -a "$LOG_DIARIO"
 
     tail -n +2 "$latest_csv" | while IFS=',' read -r id fecha nombre ciudad direccion correo telefono ip cantidad monto pago estado timestamp obs; do
         PDF="$FACTURAS/factura_${id}.pdf"
@@ -42,7 +42,10 @@ if [ -n "$latest_csv" ]; then
         TEX_TEMP="$SCRIPT_DIR/factura_${id}.tex"
 
         # Omitir si ya existe
-        [ -f "$PDF" ] && echo "Factura existente para ID $id. Omitida." && continue
+        if [ -f "$PDF" ]; then
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] Factura existente para ID $id. Omitida." | tee -a "$LOG_DIARIO"
+            continue
+        fi
 
         # Escapar todos los campos
         id=$(escape_latex "$id")
@@ -60,8 +63,7 @@ if [ -n "$latest_csv" ]; then
         timestamp=$(escape_latex "$timestamp")
         obs=$(escape_latex "$obs")
 
-        echo "" | tee -a "$LOG_DIARIO"
-        echo "Generando factura ID $id para $nombre" | tee -a "$LOG_DIARIO"
+        echo "[$(date +'%Y-%m-%d %H:%M:%S')] Generando factura ID $id para $nombre" | tee -a "$LOG_DIARIO"
 
         # Crear archivo .tex personalizado
         sed -e "s/{id_transaccion}/$id/g" \
@@ -85,19 +87,23 @@ if [ -n "$latest_csv" ]; then
 
         # Validar si se generó correctamente
         if grep -q "^!" "$LOG_FACTURA"; then
-            echo "ERROR: Falló la compilación para ID $id" | tee -a "$LOG_DIARIO"
-            tail -n 5 "$LOG_FACTURA"
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: Falló la compilación para ID $id" | tee -a "$LOG_DIARIO"
+            tail -n 5 "$LOG_FACTURA" | tee -a "$LOG_DIARIO"
         elif [ -f "$PDF" ]; then
-            echo "Factura generada: $PDF" | tee -a "$LOG_DIARIO"
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] Factura generada: $PDF" | tee -a "$LOG_DIARIO"
             echo "factura_${id}.pdf,$correo" >> "$PENDIENTES"
         else
-            echo "ADVERTENCIA: PDF no encontrado para ID $id" | tee -a "$LOG_DIARIO"
+            echo "[$(date +'%Y-%m-%d %H:%M:%S')] ADVERTENCIA: PDF no encontrado para ID $id" | tee -a "$LOG_DIARIO"
         fi
 
         # Limpiar temporales
         rm -f "$TEX_TEMP" "$FACTURAS/factura_${id}".{aux,log,out}
 
+        echo "" | tee -a "$LOG_DIARIO"
+
     done
 else
-    echo "No se encontraron archivos de compras para procesar." | tee -a "$LOG_DIARIO"
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] No se encontraron archivos de compras para procesar." | tee -a "$LOG_DIARIO"
 fi
+
+echo "[$(date +'%Y-%m-%d %H:%M:%S')] Proceso completado" | tee -a "$LOG_DIARIO"
