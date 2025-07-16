@@ -2,11 +2,14 @@
 import smtplib                # Para conectarse al servidor SMTP y enviar correos
 import csv                   # Para leer y escribir archivos CSV
 import os                    # Para rutas y operaciones con archivos
+import glob
 import re                    # Para validar correos con expresiones regulares
 from email.mime.multipart import MIMEMultipart       # Para crear correos con partes (texto, adjunto, etc)
 from email.mime.text import MIMEText                 # Para agregar el cuerpo del mensaje (texto plano)
 from email.mime.base import MIMEBase                 # Para manejar archivos adjuntos
 from email import encoders                           # Para codificar archivos adjuntos en base64
+import subprocess
+
 
 # --- Configuración de correo ---
 SMTP_SERVER = "smtp.gmail.com"           # Servidor de correo SMTP de Gmail
@@ -21,6 +24,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --- Rutas absolutas a archivos importantes ---
 ARCHIVO_PENDIENTES = os.path.join(BASE_DIR, "data", "facturas_pdf", "pendientes_envio.csv")  # CSV con lista de facturas por enviar
 ARCHIVO_LOG = os.path.join(BASE_DIR, "data", "facturas_pdf", "log_envios", "log_envios.csv") # CSV donde se guardan los resultados (éxito/fallo)
+
+
+
+# --- Configuración y rutas (asume que ya están definidas las variables BASE_DIR, ARCHIVO_LOG, etc.) ---
+
+log_diario_path = os.path.join(BASE_DIR, "data", "logs", "log_diario.log")
 
 # --- Funciones para mostrar mensajes bonitos en consola ---
 def info(msg):
@@ -84,7 +93,7 @@ def enviar_factura(pdf, correo_destino):
         servidor.quit()                                      # Se cierra la conexión
 
         info(f"Correo enviado a {correo_destino}")
-        return True  # Todo salió bien
+        return True 
 
     except Exception as e:
         error(f"Fallo al enviar a {correo_destino}: {e}")  # Se muestra el error si algo falla
@@ -99,6 +108,8 @@ def procesar_envios():
             pdf, correo = fila[0].strip(), fila[1].strip()  # Limpiamos espacios extra
             estado = "exitoso" if enviar_factura(pdf, correo) else "fallido"  # Intentamos enviar
             registrar_log(pdf, correo, estado, log)  # Guardamos el resultado en el log
+            print(f"El estado actual es: {estado}")
+
 
 # --- Limpiar la lista de pendientes eliminando los que se enviaron bien ---
 def limpiar_pendientes():
@@ -123,7 +134,80 @@ def limpiar_pendientes():
     except Exception as e:
         error(f"Error al limpiar pendientes: {e}") 
 
-# --- Programa principal que se ejecuta si corres este archivo directamente ---
+
+
+def enviar_reporte_admin(resumen_txt):
+    try:
+        mensaje = MIMEMultipart()
+        mensaje['From'] = SMTP_USER
+        mensaje['To'] = SMTP_USER
+        mensaje['Subject'] = "📋 Reporte Diario de Envíos"
+        cuerpo = MIMEText(resumen_txt, 'plain')
+        mensaje.attach(cuerpo)
+
+        servidor = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+        servidor.starttls()
+        servidor.login(SMTP_USER, SMTP_PASS)
+        servidor.send_message(mensaje)
+        servidor.quit()
+
+        info("Reporte diario enviado al administrador.")
+    except Exception as e:
+        error(f"Error al enviar el reporte al administrador: {e}")
+
+
+def contar_registros(log_path):
+    comando = f'awk -F"," \'NF==3 {{count++}} END {{print count}}\' "{log_path}"'
+    resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
+    if resultado.returncode == 0:
+        try:
+            return int(resultado.stdout.strip())
+        except ValueError:
+            error("Error al convertir la salida de awk a entero.")
+            return 0
+    else:
+        error(f"No se pudo contar líneas con awk: {resultado.stderr}")
+        return 0
+
+def almacenar_log_diario(enviar=False):
+    # Contar líneas del log usando awk
+    total_correos = contar_registros(ARCHIVO_LOG)
+
+    total_vendido = 0
+    pedidos_completos = 0
+    pedidos_exitosos = 0
+    pedidos_fallidos = 0
+
+    compras_path = os.path.join(BASE_DIR, "data", "compras", "compras_*.csv")
+    for archivo in glob.glob(compras_path):
+        with open(archivo, encoding='utf-8') as f:
+            lector = csv.DictReader(f)
+            for row in lector:
+                if row["estado_pago"] == "exitoso":
+                    total_vendido += float(row['monto_total'])
+                    pedidos_exitosos += 1
+                    if row['modalidad_pago'].strip().lower() == "completo":
+                        pedidos_completos += 1
+                elif row["estado_pago"] == "fallido":
+                    pedidos_fallidos += 1
+
+    resumen = (
+        f"Total de correos procesados: {total_correos}\n"
+        f"Pedidos exitosos: {pedidos_exitosos}\n"
+        f"Pedidos fallidos: {pedidos_fallidos}\n"
+        f"Total vendido: ₡{total_vendido:.2f}\n"
+        f"Pedidos con pago completo: {pedidos_completos}\n"
+        "---------------------------------------------\n"
+    )
+
+    os.makedirs(os.path.dirname(log_diario_path), exist_ok=True)
+    with open(log_diario_path, 'a', encoding='utf-8') as f:
+        f.write(resumen)
+
+    if enviar:
+        enviar_reporte_admin(resumen)
+
 if __name__ == "__main__":
-    procesar_envios()     
-    limpiar_pendientes()  
+    procesar_envios()
+    limpiar_pendientes()
+    almacenar_log_diario()

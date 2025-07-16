@@ -12,7 +12,7 @@ TEMPLATE="$SCRIPT_DIR/../templates/plantilla_factura_IRSI.tex"
 COMPRAS="$SCRIPT_DIR/../data/compras"
 FACTURAS="$SCRIPT_DIR/../data/facturas_pdf"
 LOG_DIR="$SCRIPT_DIR/../data/logs"
-LOG_DIARIO="$LOG_DIR/log_diario.log"
+# LOG_DIARIO="$LOG_DIR/log_diario.log"
 PENDIENTES="$FACTURAS/pendientes_envio.csv"
 
 # Crear carpetas necesarias
@@ -58,8 +58,8 @@ find "$COMPRAS" -type f -name "compras_*.csv" | while read -r CSV; do
         timestamp=$(escape_latex "$timestamp")
         obs=$(escape_latex "$obs")
 
-        echo "" | tee -a "$LOG_DIARIO"
-        echo "Generando factura ID $id para $nombre" | tee -a "$LOG_DIARIO"
+        echo "" | tee -a "$LOG_FACTURA"
+        echo "Generando factura ID $id para $nombre" | tee -a "$LOG_FACTURA"
 
         # Crear archivo .tex personalizado
         sed -e "s/{id_transaccion}/$id/g" \
@@ -79,17 +79,17 @@ find "$COMPRAS" -type f -name "compras_*.csv" | while read -r CSV; do
             "$TEMPLATE" > "$TEX_TEMP"
 
         # Compilar el .tex a PDF
-        pdflatex -interaction=nonstopmode -output-directory="$FACTURAS" "$TEX_TEMP" > "$LOG_FACTURA" 2>&1
+        pdflatex -interaction=nonstopmode -output-directory="$FACTURAS" "$TEX_TEMP" 2>&1
 
         # Validar si se generó correctamente
         if grep -q "^!" "$LOG_FACTURA"; then
-            echo "ERROR: Falló la compilación para ID $id" | tee -a "$LOG_DIARIO"
+            echo "ERROR: Falló la compilación para ID $id" | tee -a "$LOG_FACTURA"
             tail -n 5 "$LOG_FACTURA"
         elif [ -f "$PDF" ]; then
-            echo "Factura generada: $PDF" | tee -a "$LOG_DIARIO"
+            echo "Factura generada: $PDF" | tee -a "$LOG_FACTURA"
             echo "factura_${id}.pdf,$correo" >> "$PENDIENTES"
         else
-            echo "ADVERTENCIA: PDF no encontrado para ID $id" | tee -a "$LOG_DIARIO"
+            echo "ADVERTENCIA: PDF no encontrado para ID $id" | tee -a "$LOG_FACTURA"
         fi
 
         # Limpiar temporales
