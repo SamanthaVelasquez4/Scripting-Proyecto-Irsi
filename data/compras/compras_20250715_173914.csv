@@ -1,2 +1,0 @@
-id_transaccion,fecha_emision,nombre,ciudad,direccion,correo,telefono,ip,cantidad,monto_total,modalidad_pago,estado_pago,timestamp,observaciones
-118919,15-07-2025,Dustin Howell,Lake Jerry,23617 Eric Crest Jenniferport - SC 40889,clang@example.com,+1-607-649-2679,162.11.6.41,4,4116,completo,exitoso,15 Jul 2025 - 05:39 PM,Cliente frecuente

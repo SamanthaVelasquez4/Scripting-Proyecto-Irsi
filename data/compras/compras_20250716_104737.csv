@@ -1,0 +1,4 @@
+id_transaccion,fecha_emision,nombre,ciudad,direccion,correo,telefono,ip,cantidad,monto_total,modalidad_pago,estado_pago,timestamp,observaciones
+248937,16-07-2025,Justin Roth,West Jacobfort,Unit 1431 Box 3034 DPO AP 90998,smithcory@example.org,9818911948,142.182.37.129,2,4800,fraccionado,exitoso,16 Jul 2025 - 10:47 AM,Cliente frecuente
+4937,16-07-2025,William Burch,Kellyland,72408 Summers Curve Apt. 559 West Susanview - PW 78820,ucooper@example.com,489.586.5666x573,160.1.38.79,2,11096,fraccionado,fallido,16 Jul 2025 - 10:47 AM,Cliente frecuente
+713443,16-07-2025,April Lee,North Kimberlymouth,1437 Kelly Park Apt. 355 North Erik - CA 29753,anthonymontoya@example.net,001-685-881-7070x7603,20.245.107.211,8,45792,fraccionado,exitoso,16 Jul 2025 - 10:47 AM,Promoción aplicada

@@ -1,0 +1,4 @@
+id_transaccion,fecha_emision,nombre,ciudad,direccion,correo,telefono,ip,cantidad,monto_total,modalidad_pago,estado_pago,timestamp,observaciones
+743055,16-07-2025,Autumn Burke,Boydstad,42771 Stephanie Falls South Taylorshire - RI 00652,ryanwilliams@example.net,001-347-832-4406x94991,45.249.97.166,7,55209,fraccionado,fallido,16 Jul 2025 - 10:50 AM,Promoción aplicada
+877930,16-07-2025,Katelyn Owen,Tylershire,2223 Vincent Parkway East Roseburgh - PA 18141,hollowayjacob@example.net,381-473-7673,2.235.62.15,6,37824,fraccionado,exitoso,16 Jul 2025 - 10:50 AM,Promoción aplicada
+23411,16-07-2025,Mark Strong,Jerometown,565 Marc Mount Lake Sarah - MT 89954,darlenedavis@example.net,(710)768-7414x69597,88.5.72.78,4,9548,completo,exitoso,16 Jul 2025 - 10:50 AM,Promoción aplicada

@@ -41,7 +41,7 @@ def guardar_compras_csv(compras, ruta_archivo):
 
 
 if __name__ == "__main__":
-    cantidad_compras = 1  # Definir cuántas compras generar
+    cantidad_compras = 3  # Definir cuántas compras generar
     compras = [generar_compra() for _ in range(cantidad_compras)]  # Generar lista de compras
 
     # Definir ruta de la carpeta
