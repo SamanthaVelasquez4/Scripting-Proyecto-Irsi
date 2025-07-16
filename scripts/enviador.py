@@ -1,3 +1,6 @@
+# Variables de entorno
+from dotenv import load_dotenv
+
 # Librerías necesarias para enviar correos, manejar archivos y validaciones
 import smtplib                # Para conectarse al servidor SMTP y enviar correos
 import csv                   # Para leer y escribir archivos CSV
@@ -10,13 +13,17 @@ from email.mime.base import MIMEBase                 # Para manejar archivos adj
 from email import encoders                           # Para codificar archivos adjuntos en base64
 import subprocess
 
+# Cargar variables de entorno
+load_dotenv()
 
 # --- Configuración de correo ---
 SMTP_SERVER = "smtp.gmail.com"           # Servidor de correo SMTP de Gmail
 SMTP_PORT = 587                          # Puerto estándar para STARTTLS
-SMTP_USER = "wrrrsgrp@gmail.com"         # Usuario del correo remitente
-SMTP_PASS = "pcyl yfbh dkza pqsp"        # Contraseña de aplicación (Generada de un correo gmail creado previamente)
+SMTP_USER = os.getenv("SMTP_USER")         # Usuario del correo remitente
+SMTP_PASS = os.getenv("SMTP_PASS")         # Contraseña de aplicación (Generada de un correo gmail creado previamente)
 
+print("Usuario:", SMTP_USER)
+print("Contraseña:", SMTP_PASS)
 # --- Ruta base del proyecto ---
 # Esto permite encontrar la carpeta principal del proyecto desde donde esté este archivo
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -24,6 +31,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # --- Rutas absolutas a archivos importantes ---
 ARCHIVO_PENDIENTES = os.path.join(BASE_DIR, "data", "facturas_pdf", "pendientes_envio.csv")  # CSV con lista de facturas por enviar
 ARCHIVO_LOG = os.path.join(BASE_DIR, "data", "facturas_pdf", "log_envios", "log_envios.csv") # CSV donde se guardan los resultados (éxito/fallo)
+
 
 
 

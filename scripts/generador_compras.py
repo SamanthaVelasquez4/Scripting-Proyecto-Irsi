@@ -3,7 +3,7 @@ import random
 from datetime import datetime
 import csv
 import os
-import subprocess
+# import subprocess
 
 faker = Faker()  # Crear instancia de Faker para generar datos falsos
 
@@ -41,7 +41,7 @@ def guardar_compras_csv(compras, ruta_archivo):
 
 
 if __name__ == "__main__":
-    cantidad_compras = 3  # Definir cuántas compras generar
+    cantidad_compras = random.randint(1,10)  # Definir cuántas compras generar
     compras = [generar_compra() for _ in range(cantidad_compras)]  # Generar lista de compras
 
     # Definir ruta de la carpeta
