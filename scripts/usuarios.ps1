@@ -14,6 +14,34 @@ if (-not (Test-Path $logFolder)) {
 $currentDate = Get-Date -Format "yyyyMMdd"
 $logFile = "$logFolder/usuarios_$currentDate.log"
 
+# Función para escribir en el log
+function Write-Log {
+    param(
+        [string]$message,
+        [string]$level = "INFO",
+        [string]$username = ""
+    )
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $userContext = if ($username) { "[Usuario: $username]" } else { "" }
+    $logEntry = "[$timestamp][$level]$userContext $message"
+    
+    try {
+        Add-Content -Path $logFile -Value $logEntry -ErrorAction Stop
+    }
+    catch {
+        Write-Host "No se pudo escribir en el archivo de log: $($_.Exception.Message)" -ForegroundColor Red
+    }
+
+    # Colorizar la salida en consola según el nivel
+    switch ($level) {
+        "ERROR" { Write-Host $logEntry -ForegroundColor Red }
+        "WARN"  { Write-Host $logEntry -ForegroundColor Yellow }
+        "SUCCESS" { Write-Host $logEntry -ForegroundColor Green }
+        default { Write-Host $logEntry }
+    }
+}
+
 # Función para generar contraseñas seguras
 function New-SecurePassword {
     $length = 12
@@ -39,14 +67,17 @@ function New-TemporaryUser {
         $username = $username -replace 'ú', 'u'
         $username = $username -replace '[^a-z]', ''
         
+        Write-Log "Intentando crear usuario para: $($userData.Nombre) $($userData.Apellido)" -username $username
+
         # Verificar si el usuario ya existe
         if (Get-LocalUser -Name $username -ErrorAction SilentlyContinue) {
-            Write-Log "El usuario $username ya existe. Se agregará un número al final."
+            Write-Log "El usuario ya existe. Generando variante numérica." -level "WARN" -username $username
             $i = 1
             while (Get-LocalUser -Name "$username$i" -ErrorAction SilentlyContinue) {
                 $i++
             }
             $username = "$username$i"
+            Write-Log "Nuevo nombre de usuario generado: $username" -username $username
         }
 
         # Generar contraseña segura
@@ -54,19 +85,35 @@ function New-TemporaryUser {
         $securePassword = ConvertTo-SecureString $password -AsPlainText -Force
 
         # Crear el usuario
+        Write-Log "Creando usuario local..." -username $username
         New-LocalUser -Name $username `
                       -FullName "$($userData.Nombre) $($userData.Apellido)" `
                       -Password $securePassword `
                       -Description "Usuario temporal - $($userData.Departamento)" `
                       -ErrorAction Stop
 
+        Write-Log "Usuario creado exitosamente" -level "SUCCESS" -username $username
+
         # Agregar al grupo de Administradores si es necesario
         if ($userData.Privilegios -eq "Admin") {
-            Add-LocalGroupMember -Group "Administradores" -Member $username -ErrorAction SilentlyContinue
+            try {
+                Add-LocalGroupMember -Group "Administradores" -Member $username -ErrorAction Stop
+                Write-Log "Usuario agregado al grupo Administradores" -level "SUCCESS" -username $username
+            }
+            catch {
+                Write-Log "Error al agregar al grupo Administradores: $($_.Exception.Message)" -level "ERROR" -username $username
+            }
         }
 
         # Generar correo institucional
         $email = "$username@$dominioCorreo"
+
+        # Registrar detalles completos
+        Write-Log "Detalles del usuario creado:" -username $username
+        Write-Log "  - Nombre completo: $($userData.Nombre) $($userData.Apellido)" -username $username
+        Write-Log "  - Departamento: $($userData.Departamento)" -username $username
+        Write-Log "  - Privilegios: $($userData.Privilegios)" -username $username
+        Write-Log "  - Email: $email" -username $username
 
         # Retornar objeto con la información del usuario creado
         return [PSCustomObject]@{
@@ -81,6 +128,7 @@ function New-TemporaryUser {
         }
     }
     catch {
+        Write-Log "ERROR al crear usuario: $($_.Exception.Message)" -level "ERROR" -username $username
         return [PSCustomObject]@{
             Username      = $username
             FullName      = "$($userData.Nombre) $($userData.Apellido)"
@@ -92,21 +140,6 @@ function New-TemporaryUser {
             ErrorMessage = $_.Exception.Message
         }
     }
-}
-
-# Función para escribir en el log
-function Write-Log {
-    param(
-        [string]$message,
-        [string]$level = "INFO"
-    )
-
-    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-    $logEntry = "[$timestamp][$level] $message"
-    Add-Content -Path $logFile -Value $logEntry
-
-    # Mostrar en consola también
-    Write-Host $logEntry
 }
 
 # Función principal
