@@ -1,1 +1,4 @@
 .env
+/data/compras
+/data/facturas_pdf
+/data/logs
