@@ -45,8 +45,30 @@ function Write-Log {
 # Función para generar contraseñas seguras
 function New-SecurePassword {
     $length = 12
-    $nonAlphaChars = 3
-    $password = [System.Web.Security.Membership]::GeneratePassword($length, $nonAlphaChars)
+    
+    # Caracteres permitidos
+    $lowercase = 'abcdefghijklmnopqrstuvwxyz'
+    $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    $numbers = '0123456789'
+    $special = '!@#$%^&*()_-+=[{]};:>|./?'
+    
+    # Garantizar al menos un carácter de cada tipo
+    $password = @(
+        ($lowercase.ToCharArray() | Get-Random -Count 1) -join ''
+        ($uppercase.ToCharArray() | Get-Random -Count 1) -join ''
+        ($numbers.ToCharArray() | Get-Random -Count 1) -join ''
+        ($special.ToCharArray() | Get-Random -Count 1) -join ''
+    )
+    
+    # Resto de caracteres
+    $allChars = $lowercase + $uppercase + $numbers + $special
+    $password += (1..($length - 4) | ForEach-Object {
+        $allChars[(Get-Random -Maximum $allChars.Length)]
+    })
+    
+    # Mezclar los caracteres
+    $password = ($password | Sort-Object {Get-Random}) -join ''
+    
     return $password
 }
 
