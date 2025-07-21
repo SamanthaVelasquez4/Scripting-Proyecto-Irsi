@@ -1,153 +1,199 @@
-# Variables de entorno
-from dotenv import load_dotenv
+"""
+enviador.py
 
-# Librerías necesarias para enviar correos, manejar archivos y validaciones
-import smtplib                # Para conectarse al servidor SMTP y enviar correos
-import csv                   # Para leer y escribir archivos CSV
-import os                    # Para rutas y operaciones con archivos
+Script para enviar facturas PDF por correo, gestionar pendientes y logs de envío,
+y generar reportes diarios con estadísticas de ventas.
+
+Requiere: Python 3.8+, dotenv, smtplib, csv, glob, re, email, subprocess
+
+Este script:
+- Carga credenciales desde variables de entorno (.env)
+- Lee archivos CSV con facturas pendientes para enviar
+- Valida correos y archivos PDF adjuntos
+- Envía correos con facturas en PDF
+- Registra resultados en un archivo log CSV
+- Limpia pendientes enviados con éxito
+- Genera y almacena un resumen diario con estadísticas de ventas
+- Envía reporte diario al administrador vía correo
+
+"""
+
+from dotenv import load_dotenv
+import smtplib                                      # Para conectarse al servidor SMTP y enviar correos
+import csv                                          # Para leer y escribir archivos CSV
+import os                                           # Para rutas y operaciones con archivos
 import glob
-import re                    # Para validar correos con expresiones regulares
-from email.mime.multipart import MIMEMultipart       # Para crear correos con partes (texto, adjunto, etc)
-from email.mime.text import MIMEText                 # Para agregar el cuerpo del mensaje (texto plano)
-from email.mime.base import MIMEBase                 # Para manejar archivos adjuntos
-from email import encoders                           # Para codificar archivos adjuntos en base64
+import re                                           # Para validar correos con expresiones regulares
+from email.mime.multipart import MIMEMultipart      # Para crear correos con partes (texto, adjunto, etc)
+from email.mime.text import MIMEText                # Para agregar el cuerpo del mensaje (texto plano)
+from email.mime.base import MIMEBase                # Para manejar archivos adjuntos
+from email import encoders                          # Para codificar archivos adjuntos en base64
 import subprocess
 
-# Cargar variables de entorno
+# Cargar variables de entorno desde archivo .env que debe estar en la raíz del proyecto
 load_dotenv()
 
 # --- Configuración de correo ---
-SMTP_SERVER = "smtp.gmail.com"           # Servidor de correo SMTP de Gmail
-SMTP_PORT = 587                          # Puerto estándar para STARTTLS
-SMTP_USER = os.getenv("SMTP_USER")         # Usuario del correo remitente
-SMTP_PASS = os.getenv("SMTP_PASS")         # Contraseña de aplicación (Generada de un correo gmail creado previamente)
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
+SMTP_USER = os.getenv("SMTP_USER")     # Usuario del correo remitente
+SMTP_PASS = os.getenv("SMTP_PASS")     # Contraseña de aplicación generada desde Gmail
 
-print("Usuario:", SMTP_USER)
-print("Contraseña:", SMTP_PASS)
-# --- Ruta base del proyecto ---
-# Esto permite encontrar la carpeta principal del proyecto desde donde esté este archivo
+# print("Usuario:", SMTP_USER)
+# print("Contraseña:", SMTP_PASS)
+
+# --- Rutas base del proyecto ---
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# --- Rutas absolutas a archivos importantes ---
-ARCHIVO_PENDIENTES = os.path.join(BASE_DIR, "data", "facturas_pdf", "pendientes_envio.csv")  # CSV con lista de facturas por enviar
-ARCHIVO_LOG = os.path.join(BASE_DIR, "data", "facturas_pdf", "log_envios", "log_envios.csv") # CSV donde se guardan los resultados (éxito/fallo)
-
-
-
-
-# --- Configuración y rutas (asume que ya están definidas las variables BASE_DIR, ARCHIVO_LOG, etc.) ---
-
+# Rutas importantes:
+# - ARCHIVO_PENDIENTES: archivo CSV con facturas pendientes por enviar (formato: pdf, correo)
+# - ARCHIVO_LOG: archivo CSV donde se registra el resultado de cada envío (formato: pdf, correo, estado)
+# - log_diario_path: archivo de texto con resumen diario de ventas y envíos
+ARCHIVO_PENDIENTES = os.path.join(BASE_DIR, "data", "facturas_pdf", "pendientes_envio.csv")
+ARCHIVO_LOG = os.path.join(BASE_DIR, "data", "facturas_pdf", "log_envios", "log_envios.csv")
 log_diario_path = os.path.join(BASE_DIR, "data", "logs", "log_diario.log")
 
-# --- Funciones para mostrar mensajes bonitos en consola ---
+# --- Funciones utilitarias ---
+
 def info(msg):
+    """Muestra un mensaje de éxito en consola con formato verde."""
     print(f"[OK] {msg}")  
 
 def error(msg):
+    """Muestra un mensaje de error en consola con formato rojo."""
     print(f"[ERROR] {msg}")  
 
-# --- Verificar si un correo tiene un formato válido ---
+
 def correo_valido(correo):
-    patron = r'^[\w\.-]+@[\w\.-]+\.\w+$'     # Regex básico para validar correos
+    """
+    Verifica si el correo tiene un formato válido usando una expresión regular.
+
+    Args:
+        correo (str): Dirección de correo electrónico a validar.
+
+    Returns:
+        bool: True si el correo es válido, False en caso contrario.
+    """
+    patron = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(patron, correo) is not None
 
-# --- Leer pendientes del archivo CSV ---
 def leer_pendientes(path):
-    with open(path, newline='', encoding="utf-8") as f:    # Abrimos el archivo
-        return [line for line in csv.reader(f) if len(line) >= 2]  # Devolvemos solo líneas con al menos 2 columnas (PDF, correo)
+    """
+    Lee el archivo CSV de facturas pendientes y devuelve solo las filas con al menos dos columnas.
 
-# --- Guardar en el log si se envió o falló ---
+    Args:
+        path (str): Ruta al archivo CSV de pendientes.
+
+    Returns:
+        list[list]: Lista de filas, cada una con datos mínimos [pdf, correo].
+    """
+    with open(path, newline='', encoding="utf-8") as f:
+        return [line for line in csv.reader(f) if len(line) >= 2]
+
 def registrar_log(pdf, correo, estado, escritor):
-    escritor.writerow([pdf, correo, estado])  # Escribe una línea nueva en el log
+    """
+    Registra en el archivo log el estado de envío de una factura.
 
-# --- Función que envía la factura por correo con el PDF adjunto ---
+    Args:
+        pdf (str): Nombre del archivo PDF enviado.
+        correo (str): Correo electrónico de destino.
+        estado (str): Estado del envío ('exitoso' o 'fallido').
+        escritor (csv.writer): Objeto escritor CSV abierto para agregar la línea.
+    """
+    escritor.writerow([pdf, correo, estado])
+
 def enviar_factura(pdf, correo_destino):
-    # Construir la ruta al archivo PDF
+    """
+    Envía una factura PDF adjunta por correo electrónico.
+
+    Args:
+        pdf (str): Nombre del archivo PDF a enviar.
+        correo_destino (str): Dirección de correo destino.
+
+    Returns:
+        bool: True si el correo se envió correctamente, False si hubo fallo.
+    """
     ruta_pdf = os.path.join(BASE_DIR, "data", "facturas_pdf", pdf)
 
-    # Verificar si el archivo existe
     if not os.path.isfile(ruta_pdf):
         error(f"Archivo no encontrado: {pdf}")
         return False
 
-    # Verificar si el correo es válido
     if not correo_valido(correo_destino):
         error(f"Correo inválido: {correo_destino}")
         return False
 
     try:
-        # Crear el mensaje de correo
         mensaje = MIMEMultipart()
         mensaje['From'] = SMTP_USER
         mensaje['To'] = correo_destino
-        mensaje['Subject'] = "Factura generada"  # Asunto del correo
-
-        # Cuerpo del mensaje
+        mensaje['Subject'] = "Factura generada"
         mensaje.attach(MIMEText("Adjuntamos su factura generada. Gracias por su compra.", 'plain'))
 
-        # Adjuntar el archivo PDF
         with open(ruta_pdf, "rb") as f:
-            adjunto = MIMEBase('application', 'octet-stream')  # Tipo genérico de archivo
-            adjunto.set_payload(f.read())                     # Leemos el contenido binario
-            encoders.encode_base64(adjunto)                   # Lo codificamos en base64
-            adjunto.add_header('Content-Disposition', f'attachment; filename={pdf}')  # Nombre del archivo adjunto
-            mensaje.attach(adjunto)                           # Se agrega al mensaje
+            adjunto = MIMEBase('application', 'octet-stream')
+            adjunto.set_payload(f.read())
+            encoders.encode_base64(adjunto)
+            adjunto.add_header('Content-Disposition', f'attachment; filename={pdf}')
+            mensaje.attach(adjunto)
 
-        # Enviar el correo usando SMTP con STARTTLS (encriptado)
         servidor = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
-        servidor.starttls()                                  # Se establece conexión segura
-        servidor.login(SMTP_USER, SMTP_PASS)                 # Se inicia sesión
-        servidor.send_message(mensaje)                       # Se envía el correo
-        servidor.quit()                                      # Se cierra la conexión
+        servidor.starttls()
+        servidor.login(SMTP_USER, SMTP_PASS)
+        servidor.send_message(mensaje)
+        servidor.quit()
 
         info(f"Correo enviado a {correo_destino}")
-        return True 
+        return True
 
     except Exception as e:
-        error(f"Fallo al enviar a {correo_destino}: {e}")  # Se muestra el error si algo falla
+        error(f"Fallo al enviar a {correo_destino}: {e}")
         return False
 
-# --- Procesar todos los correos pendientes ---
 def procesar_envios():
-    pendientes = leer_pendientes(ARCHIVO_PENDIENTES)  # Leemos la lista de pendientes
-    # Crear carpeta log_envios si no existe
+    """
+    Procesa todas las facturas pendientes para enviar los correos con sus PDFs.
+    Registra el resultado (éxito/fallo) en el archivo log CSV.
+    """
+    pendientes = leer_pendientes(ARCHIVO_PENDIENTES)
     os.makedirs(os.path.dirname(ARCHIVO_LOG), exist_ok=True)
-    
+
     with open(ARCHIVO_LOG, 'a', newline='', encoding="utf-8") as f_log:
         log = csv.writer(f_log)
         for fila in pendientes:
-            pdf, correo = fila[0].strip(), fila[1].strip()  # Limpiamos espacios extra
-            estado = "exitoso" if enviar_factura(pdf, correo) else "fallido"  # Intentamos enviar
-            registrar_log(pdf, correo, estado, log)  # Guardamos el resultado en el log
+            pdf, correo = fila[0].strip(), fila[1].strip()
+            estado = "exitoso" if enviar_factura(pdf, correo) else "fallido"
+            registrar_log(pdf, correo, estado, log)
             print(f"El estado actual es: {estado}")
 
-
-# --- Limpiar la lista de pendientes eliminando los que se enviaron bien ---
 def limpiar_pendientes():
+    """
+    Limpia el archivo de pendientes eliminando las facturas que ya fueron enviadas exitosamente.
+    """
     try:
-        # Leer los que se enviaron exitosamente desde el log
         with open(ARCHIVO_LOG, newline='', encoding="utf-8") as f:
             enviados = {line[0] for line in csv.reader(f) if len(line) == 3 and line[2] == "exitoso"}
 
-        # Leer los pendientes actuales
         with open(ARCHIVO_PENDIENTES, newline='', encoding="utf-8") as f:
             actuales = [line for line in csv.reader(f)]
 
-        # Conservar solo los que no se han enviado aún
         nuevos = [line for line in actuales if line and line[0] not in enviados]
 
-        # Escribir nuevamente el archivo pendientes, con solo los que faltan
         with open(ARCHIVO_PENDIENTES, 'w', newline='', encoding="utf-8") as f:
             csv.writer(f).writerows(nuevos)
 
         info("Líneas exitosas eliminadas del archivo pendientes_envio.csv")
 
     except Exception as e:
-        error(f"Error al limpiar pendientes: {e}") 
-
-
+        error(f"Error al limpiar pendientes: {e}")
 
 def enviar_reporte_admin(resumen_txt):
+    """
+    Envía un reporte diario por correo al administrador con resumen de envíos.
+
+    Args:
+        resumen_txt (str): Texto con el resumen diario a enviar.
+    """
     try:
         mensaje = MIMEMultipart()
         mensaje['From'] = SMTP_USER
@@ -166,8 +212,16 @@ def enviar_reporte_admin(resumen_txt):
     except Exception as e:
         error(f"Error al enviar el reporte al administrador: {e}")
 
-
 def contar_registros(log_path):
+    """
+    Cuenta cuántas líneas válidas (con 3 columnas) hay en el archivo log.
+
+    Args:
+        log_path (str): Ruta del archivo log CSV.
+
+    Returns:
+        int: Número total de registros válidos en el log.
+    """
     comando = f'awk -F"," \'NF==3 {{count++}} END {{print count}}\' "{log_path}"'
     resultado = subprocess.run(comando, shell=True, capture_output=True, text=True)
     if resultado.returncode == 0:
@@ -181,7 +235,13 @@ def contar_registros(log_path):
         return 0
 
 def almacenar_log_diario(enviar=False):
-    # Contar líneas del log usando awk
+    """
+    Genera un resumen diario con estadísticas de ventas y envíos,
+    lo guarda en archivo log y opcionalmente lo envía por correo.
+
+    Args:
+        enviar (bool): Si True, envía el resumen por correo al administrador.
+    """
     total_correos = contar_registros(ARCHIVO_LOG)
 
     total_vendido = 0
